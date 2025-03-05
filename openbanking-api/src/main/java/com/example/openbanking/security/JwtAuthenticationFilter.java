@@ -1,17 +1,22 @@
 package com.example.openbanking.security;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.MalformedJwtException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Component;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import io.jsonwebtoken.security.SignatureException;
+
 
 /**
  * JWT Authentication Filter.
@@ -23,14 +28,17 @@ import java.io.IOException;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final UserDetailsService userDetailsService;
 
     /**
-     * Constructor to inject the JwtTokenProvider.
+     * Constructor to inject dependencies.
      *
-     * @param jwtTokenProvider Service that provides JWT validation and extraction.
+     * @param jwtTokenProvider  Service for JWT validation and extraction.
+     * @param userDetailsService Service to load user details.
      */
-    public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider) {
+    public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider, UserDetailsService userDetailsService) {
         this.jwtTokenProvider = jwtTokenProvider;
+        this.userDetailsService = userDetailsService;
     }
 
     /**
@@ -46,36 +54,44 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
-        if (SecurityContextHolder.getContext().getAuthentication() == null) {
+        try {
             String token = getJwtFromRequest(request);
 
-            if (token != null) {
-                try {
-                    if (jwtTokenProvider.validateToken(token)) {
-                        String username = jwtTokenProvider.getUsernameFromToken(token);
+            if (StringUtils.hasText(token)) {
+                if (jwtTokenProvider.validateToken(token)) {
+                    String username = jwtTokenProvider.getUsernameFromToken(token);
 
-                        log.info("JWT valid, authenticating user: {}", username);
+                    log.info("JWT is valid. Authenticating user: {}", username);
 
-                        UserDetails userDetails = User.withUsername(username)
-                                .password("")
-                                .authorities("USER")
-                                .build();
+                    UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                    UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
 
-                        UsernamePasswordAuthenticationToken authentication =
-                                new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
 
-                        authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
-                        SecurityContextHolder.getContext().setAuthentication(authentication);
-                    } else {
-                        log.warn("JWT is not valid!");
-                    }
-                } catch (Exception e) {
-                    log.error("JWT validation error: {}", e.getMessage());
+                } else {
+                    log.warn("Invalid JWT token detected.");
                 }
             } else {
-                log.warn("JWT token is missing!");
+                log.warn("No JWT token found in request.");
             }
+        } catch (ExpiredJwtException e) {
+            log.error("JWT token has expired: {}", e.getMessage());
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "JWT token has expired");
+            return;
+        } catch (MalformedJwtException e) {
+            log.error("Invalid JWT format: {}", e.getMessage());
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid JWT format");
+            return;
+        } catch (SignatureException e) {
+            log.error("Invalid JWT signature: {}", e.getMessage());
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid JWT signature");
+            return;
+        } catch (Exception e) {
+            log.error("Unexpected error while processing JWT: {}", e.getMessage());
+            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Internal authentication error");
+            return;
         }
 
         filterChain.doFilter(request, response);
@@ -89,7 +105,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
      */
     private String getJwtFromRequest(HttpServletRequest request) {
         String bearerToken = request.getHeader("Authorization");
-        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
+        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
             return bearerToken.substring(7);
         }
         return null;

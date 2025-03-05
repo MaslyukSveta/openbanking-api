@@ -22,7 +22,7 @@ public class MockBankController {
      */
     @GetMapping("/accounts/{iban}/balance")
     public BigDecimal getMockBalance(@PathVariable String iban) {
-        return BigDecimal.valueOf(1000.00); // Simulated account balance
+        return BigDecimal.valueOf(1000.00);
     }
 
     /**

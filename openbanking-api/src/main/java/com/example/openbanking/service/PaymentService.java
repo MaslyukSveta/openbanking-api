@@ -57,6 +57,11 @@ public class PaymentService {
         Account sender = getAccountByIban(payment.getSenderIban(), "Sender account not found");
         Account receiver = getAccountByIban(payment.getReceiverIban(), "Receiver account not found");
 
+        if (sender.getIban().equals(receiver.getIban())) {
+            log.warn("Sender and receiver accounts are the same: {}", sender.getIban());
+            throw new IllegalArgumentException("Sender and receiver accounts cannot be the same");
+        }
+
         if (sender.getBalance().compareTo(payment.getAmount()) < 0) {
             log.warn("Insufficient balance for sender: {}", sender.getIban());
             throw new IllegalStateException("Insufficient balance");
@@ -68,10 +73,7 @@ public class PaymentService {
         payment.setCreatedAt(LocalDateTime.now());
         paymentRepository.save(payment);
 
-        saveTransaction(payment.getSenderIban(), payment.getAmount().negate());
-        saveTransaction(payment.getReceiverIban(), payment.getAmount());
-
-        log.info("Payment successfully completed between {} and {}", payment.getSenderIban(), payment.getReceiverIban());
+        log.info("Payment successfully completed between {} and {}", sender.getIban(), receiver.getIban());
 
         return "Payment completed successfully";
     }

@@ -38,7 +38,6 @@ public class JwtUtil {
         Instant now = Instant.now();
         Instant expiresAt = now.plus(Duration.ofHours(1));
 
-        // Create JWT claims
         JwtClaimsSet claims = JwtClaimsSet.builder()
                 .issuer("openbanking-api")
                 .issuedAt(now)
