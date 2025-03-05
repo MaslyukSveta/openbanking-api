@@ -53,28 +53,28 @@ public class PaymentService {
         log.info("Initiating payment from {} to {} for amount {} {}",
                 payment.getSenderIban(), payment.getReceiverIban(), payment.getAmount(), payment.getCurrency());
 
-        // Validate input data
+
         validatePaymentRequest(payment);
 
-        // Fetch sender and receiver accounts
+
         Account sender = getAccountByIban(payment.getSenderIban(), "Sender account not found");
         Account receiver = getAccountByIban(payment.getReceiverIban(), "Receiver account not found");
 
-        // Ensure sender has sufficient balance
+
         if (sender.getBalance().compareTo(payment.getAmount()) < 0) {
             log.warn("Insufficient balance for sender: {}", sender.getIban());
             throw new IllegalStateException("Insufficient balance");
         }
 
-        // Process transaction
+
         processTransaction(sender, receiver, payment.getAmount());
 
-        // Save payment record
-        payment.setStatus("COMPLETED");  // Change from PENDING to COMPLETED
+
+        payment.setStatus("COMPLETED");
         payment.setCreatedAt(LocalDateTime.now());
         paymentRepository.save(payment);
 
-        // Record transactions for both sender and receiver
+
         saveTransaction(payment.getSenderIban(), payment.getAmount().negate());
         saveTransaction(payment.getReceiverIban(), payment.getAmount());
 
@@ -123,7 +123,6 @@ public class PaymentService {
         sender.setBalance(sender.getBalance().subtract(amount));
         receiver.setBalance(receiver.getBalance().add(amount));
 
-        // Save both accounts in a single batch operation for efficiency
         accountRepository.saveAll(List.of(sender, receiver));
     }
 

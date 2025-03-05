@@ -2,30 +2,28 @@ package com.example.openbanking.service;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
-
 import com.example.openbanking.model.Account;
 import com.example.openbanking.repository.AccountRepository;
-import com.example.openbanking.service.AccountService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.boot.test.context.SpringBootTest;
+
 
 import java.math.BigDecimal;
 import java.util.Optional;
 
 
-@ExtendWith(MockitoExtension.class)  // Подключаем Mockito
+@ExtendWith(MockitoExtension.class)
 class AccountServiceTest {
 
     @Mock
-    private AccountRepository accountRepository; // Мокаем репозиторий
+    private AccountRepository accountRepository;
 
     @InjectMocks
-    private AccountService accountService; // Внедряем мокнутый репозиторий
+    private AccountService accountService;
 
     private final String VALID_IBAN = "DE89370400";
     private final String INVALID_IBAN = "DE000000";
