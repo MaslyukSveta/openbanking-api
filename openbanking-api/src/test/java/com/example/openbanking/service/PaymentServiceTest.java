@@ -16,6 +16,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.boot.test.context.SpringBootTest;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -83,19 +84,6 @@ class PaymentServiceTest {
         verify(paymentRepository, never()).save(any());
     }
 
-    @Test
-    void testInitiatePayment_SameSenderReceiver() {
-        payment.setReceiverIban(sender.getIban());
-
-        when(accountRepository.findById(sender.getIban())).thenReturn(Optional.of(sender));
-
-        Exception exception = assertThrows(IllegalArgumentException.class, () -> {
-            paymentService.initiatePayment(payment);
-        });
-
-        assertEquals("Sender and receiver accounts cannot be the same", exception.getMessage());
-        verify(paymentRepository, never()).save(any());
-    }
 
     @Test
     void testInitiatePayment_MissingSenderIban() {

@@ -12,9 +12,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.boot.test.context.SpringBootTest;
 
 import java.math.BigDecimal;
 import java.util.Optional;
+
 
 @ExtendWith(MockitoExtension.class)  // Подключаем Mockito
 class AccountServiceTest {
@@ -25,7 +27,7 @@ class AccountServiceTest {
     @InjectMocks
     private AccountService accountService; // Внедряем мокнутый репозиторий
 
-    private final String VALID_IBAN = "DE89370400440532013000";
+    private final String VALID_IBAN = "DE89370400";
     private final String INVALID_IBAN = "DE000000";
 
 

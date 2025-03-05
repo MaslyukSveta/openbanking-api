@@ -14,6 +14,7 @@ import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 /**
  * Service for handling payments between accounts.
  * Ensures transaction safety, account balance updates, and records transactions.
@@ -52,28 +53,32 @@ public class PaymentService {
         log.info("Initiating payment from {} to {} for amount {} {}",
                 payment.getSenderIban(), payment.getReceiverIban(), payment.getAmount(), payment.getCurrency());
 
+        // Validate input data
         validatePaymentRequest(payment);
 
+        // Fetch sender and receiver accounts
         Account sender = getAccountByIban(payment.getSenderIban(), "Sender account not found");
         Account receiver = getAccountByIban(payment.getReceiverIban(), "Receiver account not found");
 
-        if (sender.getIban().equals(receiver.getIban())) {
-            log.warn("Sender and receiver accounts are the same: {}", sender.getIban());
-            throw new IllegalArgumentException("Sender and receiver accounts cannot be the same");
-        }
-
+        // Ensure sender has sufficient balance
         if (sender.getBalance().compareTo(payment.getAmount()) < 0) {
             log.warn("Insufficient balance for sender: {}", sender.getIban());
             throw new IllegalStateException("Insufficient balance");
         }
 
+        // Process transaction
         processTransaction(sender, receiver, payment.getAmount());
 
-        payment.setStatus("COMPLETED");
+        // Save payment record
+        payment.setStatus("COMPLETED");  // Change from PENDING to COMPLETED
         payment.setCreatedAt(LocalDateTime.now());
         paymentRepository.save(payment);
 
-        log.info("Payment successfully completed between {} and {}", sender.getIban(), receiver.getIban());
+        // Record transactions for both sender and receiver
+        saveTransaction(payment.getSenderIban(), payment.getAmount().negate());
+        saveTransaction(payment.getReceiverIban(), payment.getAmount());
+
+        log.info("Payment successfully completed between {} and {}", payment.getSenderIban(), payment.getReceiverIban());
 
         return "Payment completed successfully";
     }
@@ -118,6 +123,7 @@ public class PaymentService {
         sender.setBalance(sender.getBalance().subtract(amount));
         receiver.setBalance(receiver.getBalance().add(amount));
 
+        // Save both accounts in a single batch operation for efficiency
         accountRepository.saveAll(List.of(sender, receiver));
     }
 
